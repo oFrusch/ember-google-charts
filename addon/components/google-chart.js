@@ -1,19 +1,17 @@
-import { reads } from '@ember/object/computed';
-import { task } from 'ember-concurrency';
-import { inject as service } from '@ember/service';
-import { VERSION } from '@ember/version';
-import Component from '@ember/component';
-import { computed } from '@ember/object';
-import { debounce } from '@ember/runloop';
-import { warn } from '@ember/debug';
+import Component from "@ember/component";
+import { warn } from "@ember/debug";
+import { computed } from "@ember/object";
+import { reads } from "@ember/object/computed";
+import { debounce } from "@ember/runloop";
+import { inject as service } from "@ember/service";
+import { VERSION } from "@ember/version";
 
-import merge from 'ember-google-charts/utils/merge';
-import renderChart from 'ember-google-charts/utils/render-chart';
+import merge from "ember-google-charts/utils/merge";
+import renderChart from "ember-google-charts/utils/render-chart";
 
 const isUsingEmber2 = VERSION.match(/\b2\.\d+.\d+\b/g);
 
 export default Component.extend({
-
   /* Services */
 
   googleCharts: service(),
@@ -25,7 +23,7 @@ export default Component.extend({
 
   /* Options */
 
-  design: 'classic', // 'classic' or 'material'
+  design: "classic", // 'classic' or 'material'
   data: null,
   options: null,
   type: null, // 'area', 'bar', 'line', etc
@@ -35,9 +33,9 @@ export default Component.extend({
   chart: null,
   responsiveResize: true,
 
-  defaultOptions: reads('googleCharts.defaultOptions'),
+  defaultOptions: reads("googleCharts.defaultOptions"),
 
-  className: computed('type', function() {
+  className: computed("type", function () {
     return `${this.type}-chart`;
   }),
 
@@ -49,7 +47,7 @@ export default Component.extend({
   @public
   */
 
-  mergedOptions: computed('defaultOptions', 'options', function() {
+  mergedOptions: computed("defaultOptions", "options", function () {
     const defaultOptions = this.defaultOptions;
     const options = this.options;
 
@@ -60,24 +58,24 @@ export default Component.extend({
 
   init() {
     this._super(...arguments);
-    this.classNameBindings = ['className'];
-    this.classNames = ['google-chart'];
+    this.classNameBindings = ["className"];
+    this.classNames = ["google-chart"];
   },
 
   didInsertElement() {
     this._super(...arguments);
-    this.setupDependencies.perform();
+    this.setupDependencies();
 
     /* If the Ember version is less than 2.0.0... */
 
     if (!isUsingEmber2) {
-      this.addObserver('data', this, this._rerenderChart);
-      this.addObserver('mergedOptions', this, this._rerenderChart);
+      this.addObserver("data", this, this._rerenderChart);
+      this.addObserver("mergedOptions", this, this._rerenderChart);
     }
 
     if (this.responsiveResize) {
       this._handleResize = () => debounce(this, this._handlingResize, 200);
-      window.addEventListener('resize', this._handleResize);
+      window.addEventListener("resize", this._handleResize);
     }
   },
 
@@ -103,41 +101,45 @@ export default Component.extend({
 
   renderChart,
 
-  setupDependencies: task(function* () {
-    const {
-      design,
-      type,
-    } = this;
+  async setupDependencies() {
+    const { design, type } = this;
 
     warn(`You did not specify a chart type (e.g. 'bar', 'line', etc)`, type, {
-      id: 'ember-google-charts.supply-type',
+      id: "ember-google-charts.supply-type",
     });
 
-    warn(`You did not specify a chart design ('material' or 'classic')`, design, {
-      id: 'ember-google-charts.supply-type',
-    });
+    warn(
+      `You did not specify a chart design ('material' or 'classic')`,
+      design,
+      {
+        id: "ember-google-charts.supply-type",
+      }
+    );
 
-    yield this.googleCharts.loadPackages();
+    await this.googleCharts.loadPackages();
 
     this.packagesDidLoad();
-    this._renderChart.perform();
-  }),
+    this._renderChart();
+  },
 
   /* Private methods */
 
   _handlingResize() {
     const { element } = this;
 
-    element.style.display = 'flex';
+    element.style.display = "flex";
 
     /* Classic charts have an extra parent div */
 
     const child = element.children[0];
     const grandchild = child.children[0];
-    const chartContainer = getComputedStyle(grandchild)['position'] === 'absolute' ? child : grandchild;
+    const chartContainer =
+      getComputedStyle(grandchild)["position"] === "absolute"
+        ? child
+        : grandchild;
 
-    chartContainer.style.width = '';
-    chartContainer.style.flex = 'auto';
+    chartContainer.style.width = "";
+    chartContainer.style.flex = "auto";
 
     this._rerenderChart();
   },
@@ -146,29 +148,23 @@ export default Component.extend({
     const { chart, data } = this;
 
     if (chart && data) {
-      this._renderChart.perform();
+      this._renderChart();
     }
   },
 
-  _renderChart: task(function* () {
-    const {
-      data,
-      design,
-      element,
-      mergedOptions,
-      type
-    } = this;
+  async _renderChart() {
+    const { data, design, element, mergedOptions, type } = this;
 
-    const chart = yield this.renderChart(element, {
+    const chart = await this.renderChart(element, {
       data,
       design,
       options: mergedOptions,
       type,
     });
 
-    this.set('chart', chart);
+    this.set("chart", chart);
     this.chartDidRender(chart);
-  }),
+  },
 
   _teardownChart() {
     const { chart } = this;
@@ -179,11 +175,10 @@ export default Component.extend({
     }
 
     if (!isUsingEmber2) {
-      this.removeObserver('data', this, this._rerenderChart);
-      this.removeObserver('mergedOptions', this, this._rerenderChart);
+      this.removeObserver("data", this, this._rerenderChart);
+      this.removeObserver("mergedOptions", this, this._rerenderChart);
     }
 
-    window.removeEventListener('resize', this._handleResize);
+    window.removeEventListener("resize", this._handleResize);
   },
-
 });
